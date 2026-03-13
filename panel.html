@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Marcador &ndash; Panel</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #0f0f13; --surface: #1a1a22; --surface2: #22222e;
+    --border: #2e2e3e; --accent: #e8c44a; --danger: #e84a4a;
+    --success: #4ae87a; --text: #f0f0f0; --muted: #777;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; min-height: 100vh; padding-bottom: 40px; }
+
+  .header {
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+    padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .header h1 { font-size: 1.1rem; letter-spacing: 2px; color: var(--accent); font-weight: 700; }
+  .status { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); transition: background 0.3s; }
+  .dot.ok { background: var(--success); }
+
+  .body { padding: 14px; display: flex; flex-direction: column; gap: 14px; max-width: 500px; margin: 0 auto; }
+
+  .mode-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .modeBtn {
+    padding: 12px; border: 1px solid var(--border); background: transparent;
+    color: var(--muted); font-size: 0.85rem; font-weight: 700;
+    cursor: pointer; border-radius: 8px; transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .modeBtn.active { background: var(--accent); border-color: var(--accent); color: #000; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .card-header {
+    padding: 10px 14px; background: var(--surface2); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-header span { font-size: 0.8rem; font-weight: 700; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; }
+  .vis-toggle { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--muted); cursor: pointer; }
+  .vis-toggle input { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+  .card-body { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+  .teams-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .field-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .tinput {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    padding: 10px; font-size: 0.9rem; border-radius: 8px; width: 100%; text-align: center;
+  }
+  .tinput:focus { outline: none; border-color: var(--accent); }
+
+  .shields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .shield-loader { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .shield-box {
+    width: 64px; height: 64px; border: 2px dashed var(--border); border-radius: 10px;
+    background: var(--surface2); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  .shield-box img { width: 100%; height: 100%; object-fit: contain; }
+  .shield-box span { font-size: 0.6rem; color: var(--muted); text-align: center; line-height: 1.5; }
+  .shield-rm { font-size: 0.65rem; background: none; border: 1px solid var(--danger); color: var(--danger); padding: 2px 8px; border-radius: 4px; cursor: pointer; }
+  input[type="file"] { display: none; }
+
+  .score-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+  .score-side { display: flex; gap: 6px; }
+  .score-side.right { justify-content: flex-end; }
+  .scBtn {
+    width: 44px; height: 44px; border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text); font-size: 1.4rem; font-weight: 700;
+    cursor: pointer; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; user-select: none;
+  }
+  .scBtn.plus:active  { background: var(--success); border-color: var(--success); color: #000; }
+  .scBtn.minus:active { background: var(--danger);  border-color: var(--danger);  color: #fff; }
+  .score-display { font-size: 2rem; font-weight: 700; color: #fff; letter-spacing: 4px; text-align: center; min-width: 80px; }
+
+  .half-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .halfBtn {
+    padding: 10px; border: 1px solid var(--border); background: var(--surface2);
+    color: var(--muted); font-size: 0.8rem; font-weight: 700;
+    cursor: pointer; border-radius: 8px; transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .halfBtn.active { background: var(--accent); border-color: var(--accent); color: #000; }
+  .halfBtn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .timer-section { display: flex; flex-direction: column; gap: 8px; }
+  .timer-display { font-size: 2.4rem; font-weight: 700; color: var(--accent); text-align: center; letter-spacing: 6px; font-variant-numeric: tabular-nums; }
+  .timer-display.extra { color: var(--danger); }
+  .timer-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .tbtn {
+    padding: 12px; border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text); font-size: 0.8rem; font-weight: 700;
+    cursor: pointer; border-radius: 8px; transition: all 0.15s; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .tbtn.start { border-color: var(--success); color: var(--success); }
+  .tbtn.start:active { background: var(--success); color: #000; }
+  .tbtn.pause { border-color: var(--accent); color: var(--accent); }
+  .tbtn.pause:active { background: var(--accent); color: #000; }
+  .tbtn.reset { border-color: var(--danger); color: var(--danger); }
+  .tbtn.reset:active { background: var(--danger); color: #fff; }
+
+  .dur-row { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--muted); justify-content: center; }
+  .dur-row input {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    padding: 6px 8px; font-size: 0.85rem; border-radius: 6px; width: 52px; text-align: center;
+  }
+
+  .ads-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ad-thumb {
+    width: 70px; height: 50px; border-radius: 6px; overflow: hidden;
+    border: 1px solid var(--border); position: relative; background: var(--surface2);
+  }
+  .ad-thumb img { width: 100%; height: 100%; object-fit: contain; }
+  .ad-rm {
+    position: absolute; top: 2px; right: 2px;
+    background: rgba(0,0,0,0.7); border: none; color: #fff;
+    width: 18px; height: 18px; border-radius: 50%; font-size: 0.65rem;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .btn-add-ad {
+    padding: 10px; border: 1px dashed var(--border); background: transparent;
+    color: var(--muted); font-size: 0.8rem; cursor: pointer; border-radius: 8px; width: 100%;
+  }
+  .btn-add-ad:active { border-color: var(--accent); color: var(--accent); }
+
+  .btn-reset {
+    padding: 14px; border: 1px solid var(--border); background: transparent;
+    color: var(--muted); font-size: 0.85rem; font-weight: 700;
+    cursor: pointer; border-radius: 8px; width: 100%; text-transform: uppercase;
+  }
+  .btn-reset:active { border-color: var(--danger); color: var(--danger); }
+
+  #block2 { display: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>&#9917; MARCADOR</h1>
+  <div class="status">
+    <div class="dot" id="dot"></div>
+    <span id="statusTxt">Conectando...</span>
+  </div>
+</div>
+
+<div class="body">
+  <div class="mode-row">
+    <button class="modeBtn active" id="m1btn" onclick="setMode(1)">1 Partido</button>
+    <button class="modeBtn"        id="m2btn" onclick="setMode(2)">2 Partidos</button>
+  </div>
+
+  <!-- PARTIDO 1 -->
+  <div class="card" id="block1">
+    <div class="card-header">
+      <span>Partido 1</span>
+      <label class="vis-toggle">
+        <input type="checkbox" id="vis1" checked onchange="push()"> Visible
+      </label>
+    </div>
+    <div class="card-body">
+      <div class="teams-grid">
+        <div><div class="field-label">Local</div><input class="tinput" id="local1" value="LOCAL" onchange="push()"></div>
+        <div><div class="field-label">Visitante</div><input class="tinput" id="visitor1" value="VISITANTE" onchange="push()"></div>
+      </div>
+      <div class="shields-grid">
+        <div class="shield-loader">
+          <div class="field-label">Escudo local</div>
+          <div class="shield-box" id="sb_l1" onclick="document.getElementById('sf_l1').click()"><span>Escudo</span></div>
+          <input type="file" id="sf_l1" accept="image/*" onchange="loadShield('l1',this)">
+          <button class="shield-rm" id="srm_l1" style="display:none" onclick="removeShield('l1')">Quitar</button>
+        </div>
+        <div class="shield-loader">
+          <div class="field-label">Escudo visitante</div>
+          <div class="shield-box" id="sb_v1" onclick="document.getElementById('sf_v1').click()"><span>Escudo</span></div>
+          <input type="file" id="sf_v1" accept="image/*" onchange="loadShield('v1',this)">
+          <button class="shield-rm" id="srm_v1" style="display:none" onclick="removeShield('v1')">Quitar</button>
+        </div>
+      </div>
+      <div class="score-row">
+        <div class="score-side">
+          <button class="scBtn minus" onclick="goal(1,'l',-1)">&#8722;</button>
+          <button class="scBtn plus"  onclick="goal(1,'l', 1)">+</button>
+        </div>
+        <div class="score-display" id="scoreDisp1">0 - 0</div>
+        <div class="score-side right">
+          <button class="scBtn plus"  onclick="goal(1,'v', 1)">+</button>
+          <button class="scBtn minus" onclick="goal(1,'v',-1)">&#8722;</button>
+        </div>
+      </div>
+      <div class="half-row">
+        <button class="halfBtn active" id="h1_1" onclick="setHalf(1,1)">1a Parte</button>
+        <button class="halfBtn"        id="h2_1" onclick="setHalf(1,2)">2a Parte</button>
+      </div>
+      <div class="timer-section">
+        <div class="timer-display" id="tNum1">00:00</div>
+        <div class="timer-btns">
+          <button class="tbtn start" id="tS1" onclick="startTimer(1)">Inicio</button>
+          <button class="tbtn pause" id="tP1" onclick="pauseTimer(1)" style="display:none">Pausa</button>
+          <button class="tbtn reset" onclick="resetTimer(1)">Reset</button>
+        </div>
+        <div class="dur-row">
+          <span>Min por parte:</span>
+          <input type="number" id="dur1" value="45" min="1" max="60" onchange="push()">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PARTIDO 2 -->
+  <div class="card" id="block2">
+    <div class="card-header">
+      <span>Partido 2</span>
+      <label class="vis-toggle">
+        <input type="checkbox" id="vis2" checked onchange="push()"> Visible
+      </label>
+    </div>
+    <div class="card-body">
+      <div class="teams-grid">
+        <div><div class="field-label">Local</div><input class="tinput" id="local2" value="LOCAL" onchange="push()"></div>
+        <div><div class="field-label">Visitante</div><input class="tinput" id="visitor2" value="VISITANTE" onchange="push()"></div>
+      </div>
+      <div class="shields-grid">
+        <div class="shield-loader">
+          <div class="field-label">Escudo local</div>
+          <div class="shield-box" id="sb_l2" onclick="document.getElementById('sf_l2').click()"><span>Escudo</span></div>
+          <input type="file" id="sf_l2" accept="image/*" onchange="loadShield('l2',this)">
+          <button class="shield-rm" id="srm_l2" style="display:none" onclick="removeShield('l2')">Quitar</button>
+        </div>
+        <div class="shield-loader">
+          <div class="field-label">Escudo visitante</div>
+          <div class="shield-box" id="sb_v2" onclick="document.getElementById('sf_v2').click()"><span>Escudo</span></div>
+          <input type="file" id="sf_v2" accept="image/*" onchange="loadShield('v2',this)">
+          <button class="shield-rm" id="srm_v2" style="display:none" onclick="removeShield('v2')">Quitar</button>
+        </div>
+      </div>
+      <div class="score-row">
+        <div class="score-side">
+          <button class="scBtn minus" onclick="goal(2,'l',-1)">&#8722;</button>
+          <button class="scBtn plus"  onclick="goal(2,'l', 1)">+</button>
+        </div>
+        <div class="score-display" id="scoreDisp2">0 - 0</div>
+        <div class="score-side right">
+          <button class="scBtn plus"  onclick="goal(2,'v', 1)">+</button>
+          <button class="scBtn minus" onclick="goal(2,'v',-1)">&#8722;</button>
+        </div>
+      </div>
+      <div class="half-row">
+        <button class="halfBtn active" id="h1_2" onclick="setHalf(2,1)">1a Parte</button>
+        <button class="halfBtn"        id="h2_2" onclick="setHalf(2,2)">2a Parte</button>
+      </div>
+      <div class="timer-section">
+        <div class="timer-display" id="tNum2">00:00</div>
+        <div class="timer-btns">
+          <button class="tbtn start" id="tS2" onclick="startTimer(2)">Inicio</button>
+          <button class="tbtn pause" id="tP2" onclick="pauseTimer(2)" style="display:none">Pausa</button>
+          <button class="tbtn reset" onclick="resetTimer(2)">Reset</button>
+        </div>
+        <div class="dur-row">
+          <span>Min por parte:</span>
+          <input type="number" id="dur2" value="45" min="1" max="60" onchange="push()">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PUBLICIDAD -->
+  <div class="card">
+    <div class="card-header"><span>Publicidad</span></div>
+    <div class="card-body">
+      <div class="ads-list" id="adsList"></div>
+      <button class="btn-add-ad" onclick="document.getElementById('adFile').click()">+ Anadir imagen</button>
+      <input type="file" id="adFile" accept="image/*" multiple onchange="addAds(this)">
+    </div>
+  </div>
+
+  <button class="btn-reset" onclick="resetAll()">Reiniciar todo</button>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://qfwhmbtalzmxxpjkywkc.supabase.co'
+const SUPABASE_KEY = 'sb_publishable_CbWdRiNhYBOWdPFVHEy3Gg_ys3BOA2_'
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+
+const S = {
+  mode: 1,
+  ads: [],
+  m: [null,
+    { active:true, local:'LOCAL', visitor:'VISITANTE', gl:0, gv:0, elapsed:0, running:false, duration:45, half:1, shieldLocal:null, shieldVisitor:null, startedAt:null, elapsedAtPause:0 },
+    { active:true, local:'LOCAL', visitor:'VISITANTE', gl:0, gv:0, elapsed:0, running:false, duration:45, half:1, shieldLocal:null, shieldVisitor:null, startedAt:null, elapsedAtPause:0 }
+  ]
+}
+const ivl = { 1:null, 2:null }
+
+const m    = n => S.m[n]
+const dur  = n => (parseInt(document.getElementById('dur'+n).value)||45)*60
+const mxS  = n => m(n).half===1 ? dur(n) : dur(n)*2
+const xtra = n => currentElapsed(n) >= mxS(n)
+const fmt  = s => String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')
+
+function currentElapsed(n) {
+  const match = m(n)
+  if (match.running && match.startedAt) {
+    return match.elapsedAtPause + Math.floor((Date.now() - match.startedAt) / 1000)
+  }
+  return match.elapsedAtPause
+}
+
+// ── SUPABASE PUSH ────────────────────────────────────────────────────
+let pushing = false
+
+async function push() {
+  if (pushing) return
+  pushing = true
+  const estado = {
+    mode: S.mode,
+    ads:  S.ads,
+    m1: Object.assign({}, m(1), { active: document.getElementById('vis1').checked }),
+    m2: S.mode===2 ? Object.assign({}, m(2), { active: document.getElementById('vis2').checked }) : null
+  }
+  await sb.from('marcador_estado').update({ estado, updated_at: new Date() }).eq('id', 1)
+  pushing = false
+}
+
+// ── SUPABASE REALTIME ────────────────────────────────────────────────
+// Se llama tanto al cargar inicial como al recibir cambios remotos
+function applyState(e, isRemote) {
+  if (!e) return
+  S.mode = e.mode || 1
+  if (e.ads) { S.ads = e.ads; renderAds() }
+
+  ;[1,2].forEach(n => {
+    const src = e['m'+n]
+    if (!src) return
+
+    const wasRunning  = m(n).running
+    const keepElapsed = isRemote && wasRunning && src.running
+
+    Object.assign(m(n), src)
+    if (keepElapsed) m(n).elapsed = S.m[n].elapsed  // conservar elapsed local
+
+    // Sincronizar intervalo si el estado running cambio remotamente
+    if (isRemote) {
+      if (src.running && !wasRunning) {
+        document.getElementById('h1_'+n).disabled = true
+        document.getElementById('h2_'+n).disabled = true
+        document.getElementById('tS'+n).style.display = 'none'
+        document.getElementById('tP'+n).style.display = ''
+        if (!ivl[n]) ivl[n] = setInterval(() => refreshTimerPanel(n), 500)
+      } else if (!src.running && wasRunning) {
+        clearInterval(ivl[n]); ivl[n] = null
+        document.getElementById('h1_'+n).disabled = false
+        document.getElementById('h2_'+n).disabled = false
+        document.getElementById('tS'+n).style.display = ''
+        document.getElementById('tP'+n).style.display = 'none'
+      }
+    }
+
+    // Actualizar UI
+    document.getElementById('local'  +n).value = src.local    || ''
+    document.getElementById('visitor'+n).value = src.visitor  || ''
+    document.getElementById('dur'    +n).value = src.duration || 45
+    document.getElementById('scoreDisp'+n).textContent = m(n).gl+' - '+m(n).gv
+    document.getElementById('h1_'+n).classList.toggle('active', src.half===1)
+    document.getElementById('h2_'+n).classList.toggle('active', src.half===2)
+    const sl = src.shieldLocal, sv = src.shieldVisitor
+    document.getElementById('sb_l'+n).innerHTML = sl ? '<img src="'+sl+'">' : '<span>Escudo</span>'
+    document.getElementById('sb_v'+n).innerHTML = sv ? '<img src="'+sv+'">' : '<span>Escudo</span>'
+    document.getElementById('srm_l'+n).style.display = sl ? '' : 'none'
+    document.getElementById('srm_v'+n).style.display = sv ? '' : 'none'
+    refreshTimerPanel(n)
+  })
+
+  document.getElementById('m1btn').classList.toggle('active', S.mode===1)
+  document.getElementById('m2btn').classList.toggle('active', S.mode===2)
+  document.getElementById('block2').style.display = S.mode===2 ? '' : 'none'
+  document.getElementById('vis1').checked = e.m1?.active !== false
+  if (e.m2) document.getElementById('vis2').checked = e.m2?.active !== false
+}
+
+function setStatus(ok) {
+  document.getElementById('dot').className = 'dot'+(ok?' ok':'')
+  document.getElementById('statusTxt').textContent = ok ? 'Conectado' : 'Sin conexion'
+}
+
+// ── MODO ─────────────────────────────────────────────────────────────
+function setMode(mode) {
+  S.mode = mode
+  document.getElementById('m1btn').classList.toggle('active', mode===1)
+  document.getElementById('m2btn').classList.toggle('active', mode===2)
+  document.getElementById('block2').style.display = mode===2 ? '' : 'none'
+  push()
+}
+
+// ── PARTES ───────────────────────────────────────────────────────────
+function setHalf(n, half) {
+  if (m(n).running) return
+  m(n).half          = half
+  m(n).elapsed       = half===1 ? 0 : dur(n)
+  m(n).elapsedAtPause = m(n).elapsed
+  m(n).startedAt     = null
+  document.getElementById('h1_'+n).classList.toggle('active', half===1)
+  document.getElementById('h2_'+n).classList.toggle('active', half===2)
+  refreshTimerPanel(n)
+  push()
+}
+
+// ── GOLES ────────────────────────────────────────────────────────────
+function goal(n, side, delta) {
+  if (side==='l') m(n).gl = Math.max(0, m(n).gl+delta)
+  else            m(n).gv = Math.max(0, m(n).gv+delta)
+  document.getElementById('scoreDisp'+n).textContent = m(n).gl+' - '+m(n).gv
+  push()
+}
+
+// ── CRONOMETRO ───────────────────────────────────────────────────────
+function startTimer(n) {
+  if (m(n).running) return
+  m(n).running = true
+  m(n).startedAt = Date.now()
+  m(n).elapsedAtPause = m(n).elapsedAtPause || 0
+  document.getElementById('h1_'+n).disabled = true
+  document.getElementById('h2_'+n).disabled = true
+  document.getElementById('tS'+n).style.display = 'none'
+  document.getElementById('tP'+n).style.display = ''
+  ivl[n] = setInterval(() => refreshTimerPanel(n), 500)
+  push()
+}
+
+function pauseTimer(n) {
+  if (!m(n).running) return
+  clearInterval(ivl[n]); ivl[n] = null
+  m(n).elapsedAtPause = currentElapsed(n)
+  m(n).elapsed = m(n).elapsedAtPause
+  m(n).running = false
+  m(n).startedAt = null
+  document.getElementById('h1_'+n).disabled = false
+  document.getElementById('h2_'+n).disabled = false
+  document.getElementById('tS'+n).style.display = ''
+  document.getElementById('tP'+n).style.display = 'none'
+  push()
+}
+
+function resetTimer(n) {
+  pauseTimer(n)
+  m(n).elapsed = m(n).half===1 ? 0 : dur(n)
+  m(n).elapsedAtPause = m(n).elapsed
+  m(n).startedAt = null
+  refreshTimerPanel(n)
+  push()
+}
+
+function refreshTimerPanel(n) {
+  const el = document.getElementById('tNum'+n)
+  const e  = currentElapsed(n)
+  el.textContent = fmt(e)
+  el.className   = 'timer-display'+(e >= mxS(n) ?' extra':'')
+}
+
+// ── ESCUDOS ──────────────────────────────────────────────────────────
+function loadShield(key, input) {
+  const file = input.files[0]; if (!file) return
+  const reader = new FileReader()
+  reader.onload = e => {
+    const src  = e.target.result
+    const n    = key.slice(-1)
+    const side = key[0]==='l' ? 'shieldLocal' : 'shieldVisitor'
+    m(n)[side] = src
+    document.getElementById('sb_'+key).innerHTML = '<img src="'+src+'">'
+    document.getElementById('srm_'+key).style.display = ''
+    push()
+  }
+  reader.readAsDataURL(file)
+}
+
+function removeShield(key) {
+  const n    = key.slice(-1)
+  const side = key[0]==='l' ? 'shieldLocal' : 'shieldVisitor'
+  m(n)[side] = null
+  document.getElementById('sb_'+key).innerHTML = '<span>Escudo</span>'
+  document.getElementById('srm_'+key).style.display = 'none'
+  document.getElementById('sf_'+key).value = ''
+  push()
+}
+
+// ── PUBLICIDAD ───────────────────────────────────────────────────────
+function addAds(input) {
+  const files = Array.from(input.files); if (!files.length) return
+  let pending = files.length
+  files.forEach(file => {
+    const reader = new FileReader()
+    reader.onload = e => {
+      S.ads.push(e.target.result)
+      pending--
+      if (pending===0) { renderAds(); push() }
+    }
+    reader.readAsDataURL(file)
+  })
+  input.value = ''
+}
+
+function removeAd(i) {
+  S.ads.splice(i, 1)
+  renderAds(); push()
+}
+
+function renderAds() {
+  const list = document.getElementById('adsList')
+  list.innerHTML = ''
+  S.ads.forEach((src, i) => {
+    const div = document.createElement('div')
+    div.className = 'ad-thumb'
+    div.innerHTML = '<img src="'+src+'"><button class="ad-rm" onclick="removeAd('+i+')">x</button>'
+    list.appendChild(div)
+  })
+}
+
+// ── RESET TOTAL ──────────────────────────────────────────────────────
+function resetAll() {
+  ;[1,2].forEach(n => {
+    pauseTimer(n)
+    m(n).gl=0; m(n).gv=0; m(n).half=1; m(n).elapsed=0
+    document.getElementById('scoreDisp'+n).textContent='0 - 0'
+    document.getElementById('h1_'+n).classList.add('active')
+    document.getElementById('h2_'+n).classList.remove('active')
+    refreshTimerPanel(n)
+  })
+  push()
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────
+async function init() {
+  // 1. Cargar estado actual
+  const { data, error } = await sb.from('marcador_estado').select('estado').eq('id',1).single()
+  if (!error && data) {
+    applyState(data.estado, false)
+    setStatus(true)
+  }
+
+  // 2. Suscribirse a cambios remotos (de otros paneles o dispositivos)
+  sb.channel('marcador-panel')
+    .on('postgres_changes', {
+      event:  'UPDATE',
+      schema: 'public',
+      table:  'marcador_estado',
+      filter: 'id=eq.1'
+    }, payload => {
+      if (pushing) return  // cambio originado por nosotros, ignorar
+      applyState(payload.new.estado, true)
+    })
+    .subscribe(status => setStatus(status === 'SUBSCRIBED'))
+}
+
+init()
+</script>
+</body>
+</html>

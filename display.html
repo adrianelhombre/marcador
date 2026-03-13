@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marcador – Display</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Open+Sans:wght@700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #1a1a1a; }
+
+  body { display: flex; flex-direction: column; font-family: 'Bebas Neue', sans-serif; }
+
+  /* Marca de agua */
+  #bgLogo {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none; z-index: 0;
+  }
+  #bgLogo img { width: 55%; opacity: 0.07; }
+
+  /* Área partidos */
+  #displayMatches {
+    flex: 1; display: flex; flex-direction: column;
+    position: relative; z-index: 1; min-height: 0;
+  }
+
+  /* Un partido */
+  .d-match {
+    flex: 1; display: grid;
+    grid-template-rows: auto 1fr;
+    min-height: 0;
+    border-bottom: 2px solid #252525;
+  }
+  .d-match:last-child { border-bottom: none; }
+
+  /* TOP */
+  .d-top {
+    display: grid; grid-template-columns: 1fr 30% 1fr;
+    align-items: center;
+    padding: clamp(10px,2.2vh,26px) clamp(16px,3vw,48px) clamp(4px,0.8vh,10px);
+    gap: 12px;
+  }
+  .d-team {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(1.8rem, 3.8vw, 4rem);
+    color: #f5d000; letter-spacing: 3px; line-height: 1;
+    text-shadow: 0 2px 10px rgba(0,0,0,.5); text-align: center;
+  }
+  .two-matches .d-team { font-size: clamp(1.4rem, 3vw, 2.8rem); }
+
+  .d-period {
+    background: #f5d000; color: #000;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(0.85rem, 3vw, 2rem); font-weight: bold;
+    letter-spacing: 3px; padding: 5px 18px; border-radius: 3px;
+    white-space: nowrap; text-align: center; width: 70%; margin: 0 auto;
+  }
+
+  /* MID */
+  .d-mid {
+    display: grid; grid-template-columns: 1fr 30% 1fr;
+    align-items: center;
+    padding: 0 clamp(16px,3vw,48px);
+    gap: 6px; min-height: 0;
+  }
+  .d-side {
+    display: flex; flex-direction: column;
+    align-items: center; gap: clamp(6px,1.2vh,16px);
+    position: relative;
+  }
+  .d-score {
+    font-family: 'Open Sans', sans-serif; font-weight: bold;
+    font-size: clamp(7rem, 35vw, 80rem);
+    color: #fff; line-height: 0.85;
+    text-shadow: 0 4px 20px rgba(0,0,0,.4); position: relative;
+  }
+  .two-matches .d-score { font-size: clamp(5rem, 16vw, 18rem); }
+
+  .d-shield {
+    width: clamp(40px, 12vw, 200px); height: clamp(40px, 18vw, 200px);
+    object-fit: contain;
+    filter: drop-shadow(0 3px 8px rgba(0,0,0,.6));
+    position: absolute;
+  }
+  .two-matches .d-shield { width: clamp(40px,6vw,70px); height: clamp(40px,6vw,70px); }
+  .d-side.left  .d-shield { bottom: 5%; right: -35%; }
+  .d-side.right .d-shield { bottom: 5%; left:  -35%; }
+
+  .d-timer-wrap { display: flex; align-items: flex-start; justify-content: center; height: 70%; }
+  .d-timer {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(1.8rem, 8vw, 8rem);
+    color: #fff; letter-spacing: 5px; transition: color 0.4s;
+  }
+  .two-matches .d-timer { font-size: clamp(1.2rem, 3vw, 2.5rem); }
+  .d-timer.extra { color: #e84a4a; }
+
+  /* Banner publicidad */
+  #banner {
+    height: clamp(60px, 12vh, 100px);
+    background: #111; overflow: hidden;
+    display: flex; align-items: center;
+    flex-shrink: 0; z-index: 1;
+  }
+  .ads-track {
+    display: flex; gap: 200px; align-items: center;
+    animation: adsScroll 30s linear infinite; height: 100%;
+  }
+  .ads-track img { height: 80%; object-fit: contain; }
+  @keyframes adsScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+  /* Espera */
+  .d-waiting {
+    flex:1; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:12px; color:#252525;
+  }
+  .d-waiting .dw-big  { font-size:3rem; letter-spacing:5px; }
+  .d-waiting .dw-small { font-family:sans-serif; font-size:.8rem; letter-spacing:2px; text-transform:uppercase; }
+</style>
+</head>
+<body>
+
+<div id="bgLogo"></div>
+<div id="displayMatches">
+  <div class="d-waiting">
+    <div class="dw-big">⚽ MARCADOR</div>
+    <div class="dw-small">Esperando datos…</div>
+  </div>
+</div>
+<div id="banner">
+  <div class="ads-track" id="adsTrack"></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://qfwhmbtalzmxxpjkywkc.supabase.co'
+const SUPABASE_KEY = 'sb_publishable_CbWdRiNhYBOWdPFVHEy3Gg_ys3BOA2_'
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+
+let local = { m1:null, m2:null, mode:1 }
+let ticker = null
+let adsLoaded = false
+
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+const fmt = s => String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')
+
+function currentElapsed(m) {
+  if (m.running && m.startedAt) {
+    return (m.elapsedAtPause || 0) + Math.floor((Date.now() - m.startedAt) / 1000)
+  }
+  return m.elapsedAtPause || m.elapsed || 0
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────
+function render() {
+  const wrap   = document.getElementById('displayMatches')
+  const active = [local.m1, local.m2].filter(m => m && m.active)
+
+  wrap.classList.toggle('two-matches', active.length===2)
+
+  if (!active.length) {
+    wrap.innerHTML = '<div class="d-waiting"><div class="dw-big">⚽</div><div class="dw-small">Sin partidos activos</div></div>'
+    return
+  }
+
+  wrap.innerHTML = ''
+  active.forEach(m => {
+    const matchNum = m===local.m1 ? 1 : 2
+    const dur      = (parseInt(m.duration)||45)*60
+    const half     = m.half||1
+    const elapsed  = currentElapsed(m)
+    const isExtra  = elapsed >= (half===1 ? dur : dur*2)
+    const time     = fmt(elapsed)
+    const halfStr  = half===1 ? '1ª PARTE' : '2ª PARTE'
+    const period   = active.length===2 ? `CAMPO ${matchNum} · ${halfStr}` : halfStr
+
+    const shieldL = m.shieldLocal   ? `<img class="d-shield" src="${m.shieldLocal}">` : ''
+    const shieldV = m.shieldVisitor ? `<img class="d-shield" src="${m.shieldVisitor}">` : ''
+
+    const div = document.createElement('div')
+    div.className = 'd-match'
+    div.innerHTML = `
+      <div class="d-top">
+        <div class="d-team left">${esc(m.local)}</div>
+        <div class="d-period">${period}</div>
+        <div class="d-team right">${esc(m.visitor)}</div>
+      </div>
+      <div class="d-mid">
+        <div class="d-side left"><div class="d-score">${m.gl}${shieldL}</div></div>
+        <div class="d-timer-wrap"><div class="d-timer${isExtra?' extra':''}">${time}</div></div>
+        <div class="d-side right"><div class="d-score">${m.gv}${shieldV}</div></div>
+      </div>`
+    wrap.appendChild(div)
+  })
+}
+
+// ── TICKER ────────────────────────────────────────────────────────────
+function startTicker() {
+  if (ticker) return
+  ticker = setInterval(() => {
+    const any = ['m1','m2'].some(k => local[k]?.running)
+    if (any) render()
+  }, 500)
+}
+function stopTicker() { clearInterval(ticker); ticker=null }
+
+// ── PUBLICIDAD ────────────────────────────────────────────────────────
+function loadAds(ads) {
+  if (adsLoaded || !ads?.length) {
+    if (!ads?.length) document.getElementById('banner').style.display = 'none'
+    return
+  }
+  adsLoaded = true
+  const track = document.getElementById('adsTrack')
+  track.innerHTML = ''
+  ;[...ads, ...ads].forEach(src => {
+    const img = document.createElement('img')
+    img.src = src
+    track.appendChild(img)
+  })
+}
+
+// ── APLICAR ESTADO REMOTO ─────────────────────────────────────────────
+function applyState(e) {
+  if (!e) return
+  ;['m1','m2'].forEach(k => {
+    if (!e[k]) { local[k]=null; return }
+    const prev = local[k]
+    const keepElapsed = prev?.running && e[k].running
+    local[k] = Object.assign({}, e[k])
+    if (keepElapsed) local[k].elapsed = prev.elapsed
+  })
+  local.mode = e.mode || 1
+  if (e.ads) loadAds(e.ads)
+  const anyRunning = ['m1','m2'].some(k => local[k]?.running)
+  if (anyRunning) startTicker(); else stopTicker()
+  render()
+}
+
+// ── SUPABASE ──────────────────────────────────────────────────────────
+async function init() {
+  // Cargar estado inicial
+  const { data } = await sb.from('marcador_estado').select('estado').eq('id',1).single()
+  if (data) applyState(data.estado)
+
+  // Escuchar cambios en tiempo real
+  sb.channel('marcador')
+    .on('postgres_changes', {
+      event:  'UPDATE',
+      schema: 'public',
+      table:  'marcador_estado',
+      filter: 'id=eq.1'
+    }, payload => {
+      applyState(payload.new.estado)
+    })
+    .subscribe()
+}
+
+init()
+</script>
+</body>
+</html>
