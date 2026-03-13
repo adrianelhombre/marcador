@@ -73,7 +73,7 @@
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
 
   // Si ya está autenticado, redirigir directamente
-  if (sessionStorage.getItem('auth') === 'ok') {
+  if (localStorage.getItem('auth') === 'ok') {
     location.href = 'panel.html'
   }
 
@@ -98,7 +98,7 @@
     btn.disabled = false
 
     if (!error && data && u === data.usuario && p === data.password) {
-      sessionStorage.setItem('auth', 'ok')
+      localStorage.setItem('auth', 'ok')
       location.href = 'panel.html'
     } else {
       document.getElementById('err').style.display = ''

@@ -324,7 +324,7 @@
 
 <script>
 // ── AUTH ─────────────────────────────────────────────────────────────
-if (sessionStorage.getItem('auth') !== 'ok') {
+if (localStorage.getItem('auth') !== 'ok') {
   location.href = 'index.html'
 }
 
