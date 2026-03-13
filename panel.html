@@ -317,14 +317,24 @@ function currentElapsed(n) {
 // ── SUPABASE PUSH ────────────────────────────────────────────────────
 let pushing = false
 
+function readFromDOM(n) {
+  // Sincroniza los campos del DOM al estado antes de mandar
+  m(n).local    = document.getElementById('local'  +n).value
+  m(n).visitor  = document.getElementById('visitor'+n).value
+  m(n).duration = parseInt(document.getElementById('dur'+n).value) || 45
+  m(n).active   = document.getElementById('vis'+n).checked
+}
+
 async function push() {
   if (pushing) return
   pushing = true
+  readFromDOM(1)
+  readFromDOM(2)
   const estado = {
     mode: S.mode,
     ads:  S.ads,
-    m1: Object.assign({}, m(1), { active: document.getElementById('vis1').checked }),
-    m2: S.mode===2 ? Object.assign({}, m(2), { active: document.getElementById('vis2').checked }) : null
+    m1: Object.assign({}, m(1)),
+    m2: S.mode===2 ? Object.assign({}, m(2)) : null
   }
   await sb.from('marcador_estado').update({ estado, updated_at: new Date() }).eq('id', 1)
   pushing = false
