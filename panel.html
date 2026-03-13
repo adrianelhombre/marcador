@@ -103,6 +103,20 @@
   .tbtn.reset:active { background: var(--danger); color: #fff; }
 
   .dur-row { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--muted); justify-content: center; }
+  .settime-row { display: flex; align-items: center; gap: 6px; justify-content: center; }
+  .settime-row input {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 4px; font-size: 1rem; font-weight: 700; border-radius: 8px;
+    width: 52px; text-align: center;
+  }
+  .settime-row input:focus { outline: none; border-color: var(--accent); }
+  .settime-row span { font-size: 1.2rem; font-weight: 700; color: var(--muted); }
+  .settime-btn {
+    padding: 8px 14px; border: 1px solid var(--accent); background: transparent;
+    color: var(--accent); font-size: 0.8rem; font-weight: 700;
+    cursor: pointer; border-radius: 8px; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .settime-btn:active { background: var(--accent); color: #000; }
   .dur-row input {
     background: var(--surface2); border: 1px solid var(--border); color: var(--text);
     padding: 6px 8px; font-size: 0.85rem; border-radius: 6px; width: 52px; text-align: center;
@@ -204,6 +218,12 @@
           <button class="tbtn reset" onclick="resetTimer(1)">Reset</button>
           <div></div>
         </div>
+        <div class="settime-row">
+          <input type="number" id="setMin1" min="0" max="99" value="0" placeholder="MM">
+          <span>:</span>
+          <input type="number" id="setSec1" min="0" max="59" value="0" placeholder="SS">
+          <button class="settime-btn" onclick="setManualTime(1)">Establecer</button>
+        </div>
         <div class="dur-row">
           <span>Min por parte:</span>
           <input type="number" id="dur1" value="45" min="1" max="60" onchange="push()">
@@ -263,6 +283,12 @@
           </div>
           <button class="tbtn reset" onclick="resetTimer(2)">Reset</button>
           <div></div>
+        </div>
+        <div class="settime-row">
+          <input type="number" id="setMin2" min="0" max="99" value="0" placeholder="MM">
+          <span>:</span>
+          <input type="number" id="setSec2" min="0" max="59" value="0" placeholder="SS">
+          <button class="settime-btn" onclick="setManualTime(2)">Establecer</button>
         </div>
         <div class="dur-row">
           <span>Min por parte:</span>
@@ -464,6 +490,19 @@ function resetTimer(n) {
   m(n).elapsed = m(n).half===1 ? 0 : dur(n)
   m(n).elapsedAtPause = m(n).elapsed
   m(n).startedAt = null
+  refreshTimerPanel(n)
+  push()
+}
+
+function setManualTime(n) {
+  const mins = parseInt(document.getElementById('setMin'+n).value) || 0
+  const secs = parseInt(document.getElementById('setSec'+n).value) || 0
+  const total = mins * 60 + secs
+  // Si está corriendo, pausar primero
+  if (m(n).running) pauseTimer(n)
+  m(n).elapsed        = total
+  m(n).elapsedAtPause = total
+  m(n).startedAt      = null
   refreshTimerPanel(n)
   push()
 }
