@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Marcador – Acceso</title>
+<style>
+  :root {
+    --bg: #0f0f13; --surface: #1a1a22; --surface2: #22222e;
+    --border: #2e2e3e; --accent: #e8c44a; --danger: #e84a4a;
+    --success: #4ae87a; --text: #f0f0f0; --muted: #777;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: system-ui, sans-serif;
+    height: 100vh; display: flex; align-items: center; justify-content: center;
+  }
+  .login-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 36px 28px;
+    width: 100%; max-width: 340px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+  .login-title {
+    text-align: center; font-size: 1.6rem; font-weight: 700;
+    letter-spacing: 3px; color: var(--accent);
+  }
+  .login-sub {
+    text-align: center; font-size: 0.75rem; color: var(--muted);
+    letter-spacing: 1px; text-transform: uppercase; margin-top: -12px;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .field input {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    padding: 12px; font-size: 1rem; border-radius: 8px; width: 100%;
+  }
+  .field input:focus { outline: none; border-color: var(--accent); }
+  .btn-login {
+    padding: 14px; background: var(--accent); border: none; color: #000;
+    font-size: 0.9rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+    cursor: pointer; border-radius: 8px; transition: opacity 0.2s;
+  }
+  .btn-login:active { opacity: 0.8; }
+  .error {
+    background: rgba(232,74,74,0.15); border: 1px solid var(--danger);
+    color: var(--danger); padding: 10px 14px; border-radius: 8px;
+    font-size: 0.8rem; text-align: center; display: none;
+  }
+</style>
+</head>
+<body>
+<div class="login-card">
+  <div class="login-title">⚽ MARCADOR</div>
+  <div class="login-sub">Panel de Control</div>
+  <div class="field">
+    <label>Usuario</label>
+    <input type="text" id="user" placeholder="Usuario" autocomplete="username">
+  </div>
+  <div class="field">
+    <label>Contraseña</label>
+    <input type="password" id="pass" placeholder="Contraseña" autocomplete="current-password">
+  </div>
+  <div class="error" id="err">Usuario o contraseña incorrectos</div>
+  <button class="btn-login" onclick="login()">Entrar</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = 'https://qfwhmbtalzmxxpjkywkc.supabase.co'
+  const SUPABASE_KEY = 'sb_publishable_CbWdRiNhYBOWdPFVHEy3Gg_ys3BOA2_'
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+
+  // Si ya está autenticado, redirigir directamente
+  if (sessionStorage.getItem('auth') === 'ok') {
+    location.href = 'panel.html'
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') login() })
+
+  async function login() {
+    const u = document.getElementById('user').value.trim()
+    const p = document.getElementById('pass').value
+    if (!u || !p) return
+
+    const btn = document.querySelector('.btn-login')
+    btn.textContent = '...'
+    btn.disabled = true
+
+    const { data, error } = await sb
+      .from('marcador_config')
+      .select('usuario, password')
+      .eq('id', 1)
+      .single()
+
+    btn.textContent = 'Entrar'
+    btn.disabled = false
+
+    if (!error && data && u === data.usuario && p === data.password) {
+      sessionStorage.setItem('auth', 'ok')
+      location.href = 'panel.html'
+    } else {
+      document.getElementById('err').style.display = ''
+      document.getElementById('pass').value = ''
+      document.getElementById('pass').focus()
+    }
+  }
+</script>
+</body>
+</html>

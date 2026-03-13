@@ -16,13 +16,21 @@
 
   .header {
     background: var(--surface2); border-bottom: 1px solid var(--border);
-    padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0; z-index: 10;
+    padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10; gap: 10px;
   }
-  .header h1 { font-size: 1.1rem; letter-spacing: 2px; color: var(--accent); font-weight: 700; }
+  .header h1 { font-size: 1.1rem; letter-spacing: 2px; color: var(--accent); font-weight: 700; white-space: nowrap; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
   .status { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--muted); }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); transition: background 0.3s; }
   .dot.ok { background: var(--success); }
+  .btn-display {
+    padding: 7px 12px; background: transparent; border: 1px solid var(--accent);
+    color: var(--accent); font-size: 0.75rem; font-weight: 700;
+    cursor: pointer; border-radius: 6px; white-space: nowrap;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .btn-display:active { background: var(--accent); color: #000; }
 
   .body { padding: 14px; display: flex; flex-direction: column; gap: 14px; max-width: 500px; margin: 0 auto; }
 
@@ -154,9 +162,12 @@
 
 <div class="header">
   <h1>&#9917; MARCADOR</h1>
-  <div class="status">
-    <div class="dot" id="dot"></div>
-    <span id="statusTxt">Conectando...</span>
+  <div class="header-right">
+    <button class="btn-display" onclick="openDisplay()">&#9654; Display</button>
+    <div class="status">
+      <div class="dot" id="dot"></div>
+      <span id="statusTxt">Conectando...</span>
+    </div>
   </div>
 </div>
 
@@ -312,6 +323,15 @@
 </div>
 
 <script>
+// ── AUTH ─────────────────────────────────────────────────────────────
+if (sessionStorage.getItem('auth') !== 'ok') {
+  location.href = 'index.html'
+}
+
+function openDisplay() {
+  window.open('display.html', '_blank', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no')
+}
+
 const SUPABASE_URL = 'https://qfwhmbtalzmxxpjkywkc.supabase.co'
 const SUPABASE_KEY = 'sb_publishable_CbWdRiNhYBOWdPFVHEy3Gg_ys3BOA2_'
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
