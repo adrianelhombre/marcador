@@ -133,7 +133,7 @@
   }
   .btn-reset:active { border-color: var(--danger); color: var(--danger); }
 
-  #block2 { display: none; }
+
 </style>
 </head>
 <body>
@@ -197,9 +197,12 @@
       <div class="timer-section">
         <div class="timer-display" id="tNum1">00:00</div>
         <div class="timer-btns">
-          <button class="tbtn start" id="tS1" onclick="startTimer(1)">Inicio</button>
-          <button class="tbtn pause" id="tP1" onclick="pauseTimer(1)" style="display:none">Pausa</button>
+          <div style="position:relative">
+            <button class="tbtn start" id="tS1" onclick="startTimer(1)" style="width:100%">Inicio</button>
+            <button class="tbtn pause" id="tP1" onclick="pauseTimer(1)" style="display:none;position:absolute;inset:0;width:100%">Pausa</button>
+          </div>
           <button class="tbtn reset" onclick="resetTimer(1)">Reset</button>
+          <div></div>
         </div>
         <div class="dur-row">
           <span>Min por parte:</span>
@@ -254,9 +257,12 @@
       <div class="timer-section">
         <div class="timer-display" id="tNum2">00:00</div>
         <div class="timer-btns">
-          <button class="tbtn start" id="tS2" onclick="startTimer(2)">Inicio</button>
-          <button class="tbtn pause" id="tP2" onclick="pauseTimer(2)" style="display:none">Pausa</button>
+          <div style="position:relative">
+            <button class="tbtn start" id="tS2" onclick="startTimer(2)" style="width:100%">Inicio</button>
+            <button class="tbtn pause" id="tP2" onclick="pauseTimer(2)" style="display:none;position:absolute;inset:0;width:100%">Pausa</button>
+          </div>
           <button class="tbtn reset" onclick="resetTimer(2)">Reset</button>
+          <div></div>
         </div>
         <div class="dur-row">
           <span>Min por parte:</span>
@@ -532,10 +538,20 @@ function resetAll() {
 
 // ── INIT ─────────────────────────────────────────────────────────────
 async function init() {
+  // Ocultar bloque 2 por defecto
+  document.getElementById('block2').style.display = 'none'
+
   // 1. Cargar estado actual
   const { data, error } = await sb.from('marcador_estado').select('estado').eq('id',1).single()
   if (!error && data) {
-    applyState(data.estado, false)
+    // Sanear estado corrupto: running=true sin startedAt no es válido
+    const e = data.estado
+    ;[1,2].forEach(n => {
+      if (e['m'+n]?.running && !e['m'+n]?.startedAt) {
+        e['m'+n].running = false
+      }
+    })
+    applyState(e, false)
     setStatus(true)
   }
 
